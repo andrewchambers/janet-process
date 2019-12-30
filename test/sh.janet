@@ -1,6 +1,6 @@
 (import sh)
 
-(defn fail [] (error "fail"))
+(defmacro fail [] '(error "fail"))
 
 (unless (first (protect (sh/$ ["true"])))
   (fail))
@@ -26,5 +26,5 @@
 (unless (= ["foo\n" true] (freeze (sh/$$? ["echo" "foo"])))
   (fail))
 
-(unless (= (string (sh/$$ (sh/pipeline [["echo" "foo"] ["cat"]]))) "foo\n")
+(unless (= (string (sh/$$ (sh/pipeline [["echo" "foo\nbar\nbar"] ["sort" "-u"]]))) "bar\nfoo\n")
   (fail))

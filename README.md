@@ -38,4 +38,11 @@ A collection of modules for dealing with processes.
 (when (sh/$? ["true"])
   (print "cool!"))
 
+# shell helpers
+
+(sh/shell-quote ["hello" "there ' \""])
+"'hello' 'there '\\'' \"'"
+
+(sh/pipeline [["ls"] ["sort" "-u"]])
+@["/bin/sh" "-c" "'ls' | 'sort' '-u'"] # pass this to a run function.
 ```

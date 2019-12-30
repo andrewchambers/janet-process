@@ -168,6 +168,10 @@ static int janet_to_signal(Janet j) {
     return SIGKILL;
   } else if (janet_keyeq(j, "SIGTERM")) {
     return SIGTERM;
+  } else if (janet_keyeq(j, "SIGINT")) {
+    return SIGINT;
+  } else if (janet_keyeq(j, "SIGHUP")) {
+    return SIGHUP;
   } else {
     return -1;
   }

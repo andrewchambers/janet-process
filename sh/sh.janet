@@ -1,21 +1,15 @@
 (import process)
 
-(defn- needs-escape [c]
-  (not 
-    (or 
-      (and (>= c 65) (<= c 90))
-      (and (>= c 97) (<= c 122))
-      (= c 32))))
-
 (defn shell-quote1
   [arg]
+
   (def buf (buffer/new (* (length arg) 2)))
-  (buffer/push-byte buf 34)
+  (buffer/push-string buf "'")
   (each c arg
-    (when (needs-escape c)
-      (buffer/push-byte buf 92))
-    (buffer/push-byte buf c))
-  (buffer/push-byte buf 34)
+    (if (= c (comptime ("'" 0)))
+      (buffer/push-string buf "'\\''")
+      (buffer/push-byte buf c)))
+  (buffer/push-string buf "'")
   (string buf))
 
 (defn shell-quote
@@ -23,7 +17,7 @@
   (string/join (map shell-quote1 args) " "))
 
 (defn pipeline [commands &opt shell]
-  (default shell ["sh" "-c"])
+  (default shell ["/bin/sh" "-c"])
   (array/concat (array ;shell) (string/join (interpose "|" (map shell-quote commands)) " ")))
 
 # just convenience
