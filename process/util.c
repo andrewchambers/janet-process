@@ -31,6 +31,7 @@ int ensure_child_fds_from_are_closed_at_exec(int lowfd) {
   if (dirp == NULL)
     return -1;
 
+  errno = 0;
   while ((dent = readdir(dirp)) != NULL) {
     int fd;
 
@@ -42,7 +43,13 @@ int ensure_child_fds_from_are_closed_at_exec(int lowfd) {
       /* Not sure there is anything we can do... */
       ;
     }
+
+    errno = 0;
   }
+
+  /* readdir failed */
+  if (errno)
+    ret = -1;
 
   (void)closedir(dirp);
 
