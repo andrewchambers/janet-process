@@ -1,13 +1,17 @@
-#define _XOPEN_SOURCE 500
+#include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <janet.h>
-#include <signal.h>
 #include <stdlib.h>
+#include <janet.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#ifndef NSIG
+/* https://stackoverflow.com/questions/32427793 */
+#define NSIG (_SIGMAX + 1)
+#endif
 
 extern char **environ;
 
@@ -177,43 +181,11 @@ static int janet_to_signal(Janet j) {
   }
 }
 
-static int reset_all_signal_handlers(void) {
-#define RESET(S)                                                               \
-  do {                                                                         \
-    if (signal(S, SIG_DFL) == SIG_ERR)                                         \
-      return -1;                                                               \
-  } while (0)
-
-  RESET(SIGABRT);
-  RESET(SIGALRM);
-  RESET(SIGBUS);
-  RESET(SIGCHLD);
-  RESET(SIGCONT);
-  RESET(SIGFPE);
-  RESET(SIGHUP);
-  RESET(SIGILL);
-  RESET(SIGINT);
-  RESET(SIGPIPE);
-  RESET(SIGPOLL);
-  RESET(SIGPROF);
-  RESET(SIGQUIT);
-  RESET(SIGSEGV);
-  RESET(SIGSTKFLT);
-  RESET(SIGTSTP);
-  RESET(SIGSYS);
-  RESET(SIGTERM);
-  RESET(SIGTRAP);
-  RESET(SIGTTIN);
-  RESET(SIGTTOU);
-  RESET(SIGURG);
-  RESET(SIGUSR1);
-  RESET(SIGUSR2);
-  RESET(SIGVTALRM);
-  RESET(SIGXCPU);
-  RESET(SIGXFSZ);
-  RESET(SIGWINCH);
-#undef RESET
-  return 0;
+static void reset_all_signal_handlers(void) {
+    for (int sig = 1; sig < NSIG; sig++) {
+        /* Ignore errors here */
+        signal(sig, SIG_DFL);
+    }
 }
 
 static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
@@ -341,10 +313,7 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
     /* Child */
     int err;
 
-    if (reset_all_signal_handlers() < 0) {
-      fprintf(stderr, "child unable to reset signal handlers, aborting\n");
-      exit(1);
-    }
+    reset_all_signal_handlers();
 
     /* now we have reset all the signal handlers, we can unblock them in the
      * child. */
