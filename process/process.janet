@@ -1,6 +1,6 @@
 (import _process)
 
-(defn spawn [args &keys {:cmd cmd :gc-signal gc-signal :redirects redirects}]
+(defn spawn [args &keys {:cmd cmd :gc-signal gc-signal :redirects redirects :env env}]
   
   (default cmd (get args 0))
   (default gc-signal :SIGTERM)
@@ -21,7 +21,7 @@
       f))
 
   (let [redirects (map (fn [r] (map coerce-file r)) redirects)]
-    (def proc (_process/primitive-spawn cmd args gc-signal redirects))
+    (def proc (_process/primitive-spawn cmd args gc-signal redirects env))
     (each f finish (f))
     proc))
 
@@ -29,7 +29,7 @@
 
 (def signal _process/signal)
 
-(defn run [args &keys {:cmd cmd :gc-signal gc-signal :redirects redirects}]
+(defn run [args &keys {:cmd cmd :gc-signal gc-signal :redirects redirects :env env}]
   (default redirects [])
   (def finish @[])
 
@@ -48,7 +48,7 @@
       f))
 
   (let [redirects (map (fn [r] (map coerce-file r)) redirects)]
-    (def p (spawn args :cmd cmd :gc-signal gc-signal :redirects redirects))
+    (def p (spawn args :cmd cmd :gc-signal gc-signal :redirects redirects :env env))
     (def exit-code (wait p))
     (each f finish (f))
     exit-code))
