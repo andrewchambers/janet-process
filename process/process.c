@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <janet.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -193,7 +194,22 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
     }
   }
 
+  sigset_t all_signals_mask, old_block_mask;
+
+  if (sigfillset(&all_signals_mask) != 0)
+    janet_panic("unable to configure signal mask");
+
+  if (sigprocmask(SIG_SETMASK, &all_signals_mask, &old_block_mask) != 0)
+    janet_panic("unable to mask signals");
+
   pid_t pid = fork();
+
+  if (sigprocmask(SIG_SETMASK, &old_block_mask, NULL) != 0) {
+    /* If we can't restore the signal mask, we broke the whole process.
+       all we can do is abort...
+     */
+    abort();
+  }
 
   if (pid < 0) {
     janet_panic("fork failed");
