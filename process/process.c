@@ -152,7 +152,7 @@ static const JanetAbstractType process_type = {
 
 #define OUT_OF_MEMORY                                                          \
   do {                                                                         \
-    janet_panic("out of memoy");                                               \
+    janet_panic("out of memory");                                              \
   } while (0)
 
 static int xclose(int fd) {
