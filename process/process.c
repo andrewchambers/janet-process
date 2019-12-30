@@ -9,6 +9,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+int xclose(int fd);
+int ensure_child_fds_from_are_closed_at_exec(int lowfd);
+
 extern char **environ;
 
 typedef struct {
@@ -154,14 +157,6 @@ static const JanetAbstractType process_type = {
   do {                                                                         \
     janet_panic("out of memory");                                              \
   } while (0)
-
-static int xclose(int fd) {
-  int err;
-  do {
-    err = close(fd);
-  } while (err < 0 && errno == EINTR);
-  return err;
-}
 
 static int janet_to_signal(Janet j) {
   if (janet_keyeq(j, "SIGKILL")) {
@@ -382,6 +377,11 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
           perror("close");
           exit(1);
         }
+    }
+
+    if (ensure_child_fds_from_are_closed_at_exec(4) < 0) {
+      fprintf(stderr, "unable to ensure fds will close, aborting\n");
+      exit(1);
     }
 
     if (p->environ)
