@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -6,6 +7,24 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+/* https://stackoverflow.com/questions/32427793 */
+#ifndef NSIG
+#if defined(_SIGMAX)
+#define NSIG (_SIGMAX + 1)
+#elif defined(_NSIG)
+#define NSIG _NSIG
+#else
+#error "don't know how many signals"
+#endif
+#endif
+
+void reset_all_signal_handlers(void) {
+    for (int sig = 1; sig < NSIG; sig++) {
+        /* Ignore errors here */
+        signal(sig, SIG_DFL);
+    }
+}
 
 int xclose(int fd) {
   int err;

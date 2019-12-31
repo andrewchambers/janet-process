@@ -9,17 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-/* https://stackoverflow.com/questions/32427793 */
-#ifndef NSIG
-#if defined(_SIGMAX)
-#define NSIG (_SIGMAX + 1)
-#elif defined(_NSIG)
-#define NSIG _NSIG
-#else
-#error "don't know how many signals"
-#endif
-#endif
-
+void reset_all_signal_handlers(void);
 int xclose(int fd);
 int ensure_child_fds_from_are_closed_at_exec(int lowfd);
 
@@ -181,13 +171,6 @@ static int janet_to_signal(Janet j) {
   } else {
     return -1;
   }
-}
-
-static void reset_all_signal_handlers(void) {
-    for (int sig = 1; sig < NSIG; sig++) {
-        /* Ignore errors here */
-        signal(sig, SIG_DFL);
-    }
 }
 
 static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
