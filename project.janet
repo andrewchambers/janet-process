@@ -7,7 +7,7 @@
 
 (declare-native
   :name "_process"
-  :source ["process/process.c"])
+  :source ["process/util.c" "process/process.c"])
 
 (declare-source
   :name "process"
