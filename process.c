@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -8,9 +9,15 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#ifndef NSIG
 /* https://stackoverflow.com/questions/32427793 */
+#ifndef NSIG
+#if defined(_SIGMAX)
 #define NSIG (_SIGMAX + 1)
+#elif defined(_NSIG)
+#define NSIG _NSIG
+#else
+#error "don't know how many signals"
+#endif
 #endif
 
 int xclose(int fd);

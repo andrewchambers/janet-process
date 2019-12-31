@@ -1,18 +1,15 @@
 (declare-project
-  :name "proctools"
+  :name "process"
   :author "Andrew Chambers"
   :license "MIT"
-  :url "https://github.com/andrewchambers/janet-proctools"
-  :repo "git+https://github.com/andrewchambers/janet-proctools.git")
+  :url "https://github.com/andrewchambers/janet-process"
+  :repo "git+https://github.com/andrewchambers/janet-process.git")
 
 (declare-native
   :name "_process"
-  :source ["process/util.c" "process/process.c"])
+  :source ["util.c" "process.c"])
 
 (declare-source
   :name "process"
-  :source ["process/process.janet"])
+  :source ["process.janet"])
 
-(declare-source
-  :name "sh"
-  :source ["sh/sh.janet"])
