@@ -1,9 +1,9 @@
 #define _POSIX_C_SOURCE 200809L
-#include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <janet.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -20,10 +20,6 @@ typedef struct {
   int gc_signal;
   int exited;
   int wstatus;
-  char *cmd;
-  char **argv;
-  char **environ;
-  JanetBuffer *out_buffers[2];
 } Process;
 
 /*
@@ -103,25 +99,6 @@ static int process_gc(void *ptr, size_t s) {
       p->exited = 1;
     }
   }
-  if (p->cmd)
-    free(p->cmd);
-  if (p->argv) {
-    size_t k = 0;
-    while (p->argv[k]) {
-      free(p->argv[k]);
-      k++;
-    }
-    free(p->argv);
-  }
-
-  if (p->environ) {
-    size_t k = 0;
-    while (p->environ[k]) {
-      free(p->environ[k]);
-      k++;
-    }
-    free(p->environ);
-  }
   return 0;
 }
 
@@ -173,8 +150,24 @@ static int janet_to_signal(Janet j) {
   }
 }
 
+/* XXX we should be able to delete this if we upstream janet_scalloc */
+static void *scratch_calloc(size_t nmemb, size_t size) {
+  if (nmemb && size > (size_t)-1 / nmemb) {
+    OUT_OF_MEMORY;
+  }
+  size_t n = nmemb * size;
+  void *p = janet_smalloc(n);
+  memset(p, 0, n);
+  return p;
+}
+
 static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
-  janet_fixarity(argc, 5);
+  janet_fixarity(argc, 6);
+
+  const char *pcmd;
+  const char *pstartdir;
+  char **pargv;
+  char **penviron;
 
   Process *p = (Process *)janet_abstract(&process_type, sizeof(Process));
 
@@ -182,26 +175,20 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
   p->pid = -1;
   p->exited = 1;
   p->wstatus = 0;
-  p->cmd = NULL;
-  p->argv = NULL;
-  p->environ = NULL;
-  p->out_buffers[0] = NULL;
-  p->out_buffers[1] = NULL;
+
+  pcmd = NULL;
+  pstartdir = NULL;
+  pargv = NULL;
+  penviron = NULL;
 
   /* Janet strings are zero terminated so this is ok. */
-  p->cmd = strdup((const char *)janet_getstring(argv, 0));
-  if (!p->cmd)
-    OUT_OF_MEMORY;
+  pcmd = (const char *)janet_getstring(argv, 0);
   JanetView args = janet_getindexed(argv, 1);
 
-  p->argv = calloc(args.len + 1, sizeof(char *));
-  if (!p->argv)
-    OUT_OF_MEMORY;
+  pargv = scratch_calloc(args.len + 1, sizeof(char *));
 
   for (size_t i = 0; i < (size_t)args.len; i++) {
-    p->argv[i] = strdup(janet_getcstring(&args.items[i], 0));
-    if (!p->argv[i])
-      OUT_OF_MEMORY;
+    pargv[i] = (char *)janet_getcstring(&args.items[i], 0);
   }
 
   Janet gc_signal = argv[2];
@@ -235,9 +222,7 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
 
     JanetDictView env = janet_getdictionary(argv, 4);
 
-    p->environ = calloc((env.len + 1), sizeof(char *));
-    if (!p->environ)
-      OUT_OF_MEMORY;
+    penviron = scratch_calloc((env.len + 1), sizeof(char *));
 
     int32_t j = 0;
     for (int32_t i = 0; i < env.cap; i++) {
@@ -256,16 +241,19 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
         janet_panic("environ keys cannot have embedded nulls");
       if (strlen((char *)vals) != vlen)
         janet_panic("environ values cannot have embedded nulls");
-      char *envitem = malloc(klen + vlen + 2);
+      char *envitem = janet_smalloc(klen + vlen + 2);
       if (!envitem)
         OUT_OF_MEMORY;
       memcpy(envitem, keys, klen);
       envitem[klen] = '=';
       memcpy(envitem + klen + 1, vals, vlen);
       envitem[klen + vlen + 1] = 0;
-      p->environ[j++] = envitem;
+      penviron[j++] = envitem;
     }
-    p->environ[j] = NULL;
+  }
+
+  if (!janet_checktype(argv[5], JANET_NIL)) {
+    pstartdir = janet_getcstring(argv, 5);
   }
 
   sigset_t all_signals_mask, old_block_mask;
@@ -282,10 +270,20 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
     /* renable signals if we aren't the child. */
     if (sigprocmask(SIG_SETMASK, &old_block_mask, NULL) != 0) {
       /* If we can't restore the signal mask, we broke the whole process.
-         all we can do is abort...
+         all we can do is abort or risk having the program in an undefined
+         state.
        */
       abort();
     }
+
+    /* Free the things we allocated in reverse order */
+    if (penviron) {
+      for (int i = 0; penviron[i]; i++) {
+        janet_sfree(penviron[i]);
+      }
+      janet_sfree(penviron);
+    }
+    janet_sfree(pargv);
   }
 
   if (pid < 0) {
@@ -343,10 +341,16 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
       exit(1);
     }
 
-    if (p->environ)
-      environ = p->environ;
+    if (pstartdir)
+      if (chdir(pstartdir) < 0) {
+        perror("chdir");
+        exit(1);
+      }
 
-    execvp(p->cmd, p->argv);
+    if (penviron)
+      environ = penviron;
+
+    execvp(pcmd, pargv);
     perror("execve");
     exit(1);
   }

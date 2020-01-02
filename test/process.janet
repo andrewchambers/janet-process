@@ -20,6 +20,13 @@
   (unless (= "hello\n" (string out))
     (error "output differs")))
 
+(do 
+  (def out (buffer/new 0))
+  (unless (zero? (process/run ["pwd"] :redirects [[stderr out] [stdout stderr]] :start-dir "/tmp"))
+    (error "process failed"))
+  (unless (= "/tmp\n" (string out))
+    (error "expected /tmp start dir")))
+
 # methods
 (do 
   (def p
