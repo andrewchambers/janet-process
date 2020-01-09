@@ -18,3 +18,7 @@ A janet module for running child processes.
 (process/run ["echo" "hello"] :redirects [[stdout buf] [stderr :null]])
 ```
 
+# Usage notes
+
+- Processes are sent a configurable terminate signal and waited when the process object is garbage collected.
+- Processes can be used in 'with' blocks.
