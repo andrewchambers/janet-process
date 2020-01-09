@@ -2,7 +2,7 @@
 
 (do 
   (unless
-    (zero? (process/run ["true"] :cmd "true" :redirects [[stdin :discard] [stdout :discard] [stderr :discard]]))
+    (zero? (process/run ["true"] :cmd "true" :redirects [[stdin :null] [stdout :null] [stderr :null]]))
     (error "process failed")))
 
 (do 
@@ -26,6 +26,20 @@
     (error "process failed"))
   (unless (= "/tmp\n" (string out))
     (error "expected /tmp start dir")))
+
+(do 
+  (def out (buffer/new 0))
+  (unless (zero? (process/run ["pwd"] :redirects [[stderr out] [stdout stderr]] :start-dir "/tmp"))
+    (error "process failed"))
+  (unless (= "/tmp\n" (string out))
+    (error "expected /tmp start dir")))
+
+(do 
+  (def out (buffer/new 0))
+  (unless (zero? (process/run ["cat"] :redirects [[stdout out] [stdin "hello world"]]))
+    (error "process failed"))
+  (unless (= "hello world" (string out))
+    (error "output differs")))
 
 # methods
 (do 

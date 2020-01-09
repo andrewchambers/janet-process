@@ -15,6 +15,6 @@ A janet module for running child processes.
 (process/wait redis-process)
 
 (def buf (buffer/new 0))
-(process/run ["echo" "hello"] :redirects [[stdout buf] [stderr :discard]])
+(process/run ["echo" "hello"] :redirects [[stdout buf] [stderr :null]])
 ```
 
