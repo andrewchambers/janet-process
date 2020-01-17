@@ -406,10 +406,30 @@ static Janet process_method_close(int32_t argc, Janet *argv) {
   return janet_wrap_nil();
 }
 
+static Janet jpipe(int32_t argc, Janet *argv) {
+  (void)argv;
+  janet_fixarity(argc, 0);
+
+  int mypipe[2];
+  if (pipe(mypipe) < 0)
+    janet_panicf("unable to allocate pipe - %s", strerror(errno));
+
+  FILE *p1 = fdopen(mypipe[0], "rb");
+  FILE *p2 = fdopen(mypipe[1], "wb");
+  if (!p1 || !p2)
+    janet_panicf("unable to create file objects - %s", strerror(errno));
+
+  Janet *t = janet_tuple_begin(2);
+  t[0] = janet_makefile(p1, JANET_FILE_READ | JANET_FILE_BINARY);
+  t[1] = janet_makefile(p2, JANET_FILE_WRITE | JANET_FILE_BINARY);
+  return janet_wrap_tuple(janet_tuple_end(t));
+}
+
 static const JanetReg cfuns[] = {
     {"primitive-spawn", jprimitive_spawn, "(process/primitive-spawn spec)\n\n"},
     {"signal", jsignal, "(process/signal p sig)\n\n"},
     {"wait", jwait, "(process/wait p)\n\n"},
+    {"pipe", jpipe, "(process/pipe)\n\n"},
     {NULL, NULL, NULL}};
 
 JANET_MODULE_ENTRY(JanetTable *env) { janet_cfuns(env, "_process", cfuns); }

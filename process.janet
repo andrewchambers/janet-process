@@ -49,6 +49,8 @@
     (each f finish (f))
     proc))
 
+(def pipe _process/pipe)
+
 (def wait _process/wait)
 
 (def signal _process/signal)
