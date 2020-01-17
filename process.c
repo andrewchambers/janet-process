@@ -27,7 +27,7 @@ typedef struct {
    Returns -1 and sets errno on error, otherwise returns the exit code.
 */
 static int process_exit_code(Process *p) {
-  if (!p->exited) {
+  if (!p->exited || p->pid == -1) {
     errno = EINVAL;
     return -1;
   }
@@ -51,22 +51,39 @@ static int process_exit_code(Process *p) {
 /*
    Returns -1 and sets errno on error, otherwise returns the process exit code.
 */
-static int process_wait(Process *p) {
-  if (p->exited || p->pid == -1)
-    return process_exit_code(p);
+
+static int process_wait(Process *p, int *exit, int flags) {
+  int _exit = 0;
+  if (!exit)
+    exit = &_exit;
+
+  if (p->pid == -1) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (p->exited) {
+    *exit = process_exit_code(p);
+    return 0;
+  }
 
   int err;
 
   do {
-    err = waitpid(p->pid, &p->wstatus, 0);
+    err = waitpid(p->pid, &p->wstatus, flags);
   } while (err < 0 && errno == EINTR);
 
-  if (err < 0) {
+  if (err < 0)
     return -1;
+
+  if ((flags & WNOHANG && err == 0)) {
+    *exit = -1;
+    return 0;
   }
 
   p->exited = 1;
-  return process_exit_code(p);
+  *exit = process_exit_code(p);
+  return 0;
 }
 
 static int process_signal(Process *p, int sig) {
@@ -94,7 +111,7 @@ static int process_gc(void *ptr, size_t s) {
     do {
       err = kill(p->pid, p->gc_signal);
     } while (err < 0 && errno == EINTR);
-    if (process_wait(p) < 0) {
+    if (process_wait(p, NULL, 0) < 0) {
       /* Not much we can do here. */
       p->exited = 1;
     }
@@ -115,12 +132,17 @@ static int process_get(void *ptr, Janet key, Janet *out) {
     return 0;
 
   if (janet_keyeq(key, "pid")) {
-    *out = janet_wrap_integer(p->pid);
+    *out = (p->pid == -1) ? janet_wrap_nil() : janet_wrap_integer(p->pid);
     return 1;
   }
 
   if (janet_keyeq(key, "exit-code")) {
-    *out = janet_wrap_integer(process_exit_code(p));
+    int exit_code;
+
+    if (process_wait(p, &exit_code, WNOHANG) != 0)
+      janet_panicf("error checking exit status: %s", strerror(errno));
+
+    *out = (exit_code == -1) ? janet_wrap_nil() : janet_wrap_integer(exit_code);
     return 1;
   }
 
@@ -365,8 +387,9 @@ static Janet jwait(int32_t argc, Janet *argv) {
   if (p->exited)
     janet_panic("wait already called on process");
 
-  int exit_code = process_wait(p);
-  if (exit_code < 0)
+  int exit_code;
+
+  if (process_wait(p, &exit_code, 0) != 0)
     janet_panicf("error waiting for process - %s", strerror(errno));
 
   return janet_wrap_integer(exit_code);
@@ -399,7 +422,7 @@ static Janet process_method_close(int32_t argc, Janet *argv) {
   if (rc < 0)
     janet_panicf("unable to signal process - %s", strerror(errno));
 
-  rc = process_wait(p);
+  rc = process_wait(p, NULL, 0);
   if (rc < 0)
     janet_panicf("unable to wait for process - %s", strerror(errno));
 

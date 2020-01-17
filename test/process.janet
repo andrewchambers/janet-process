@@ -47,11 +47,11 @@
     (with [p (process/spawn ["sleep" "10"])]
       (os/sleep 0.1)
       (def pid (in p :pid))
-      (unless (= -1 (p :exit-code))
+      (unless (nil? (p :exit-code))
         (error "exit code shouldn't be set yet."))
       p))
-  (when (= -1 (p :exit-code))
-    (error "exit-code should not be -1")))
+  (when (nil? (p :exit-code))
+    (error "exit-code should not be nil")))
 
 # garbage collection shutdown.
 (var v (process/spawn ["sleep" "10"] :gc-signal :SIGKILL))
