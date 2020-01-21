@@ -17,7 +17,7 @@ extern char **environ;
 
 typedef struct {
   pid_t pid;
-  int gc_signal;
+  int close_signal;
   int exited;
   int wstatus;
 } Process;
@@ -109,7 +109,7 @@ static int process_gc(void *ptr, size_t s) {
   Process *p = (Process *)ptr;
   if (!p->exited && p->pid != -1) {
     do {
-      err = kill(p->pid, p->gc_signal);
+      err = kill(p->pid, p->close_signal);
     } while (err < 0 && errno == EINTR);
     if (process_wait(p, NULL, 0) < 0) {
       /* Not much we can do here. */
@@ -193,7 +193,7 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
 
   Process *p = (Process *)janet_abstract(&process_type, sizeof(Process));
 
-  p->gc_signal = SIGKILL;
+  p->close_signal = SIGKILL;
   p->pid = -1;
   p->exited = 1;
   p->wstatus = 0;
@@ -213,13 +213,13 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
     pargv[i] = (char *)janet_getcstring(&args.items[i], 0);
   }
 
-  Janet gc_signal = argv[2];
-  if (!janet_checktype(gc_signal, JANET_NIL)) {
-    int gc_signal_int = janet_to_signal(gc_signal);
-    if (gc_signal_int == -1)
+  Janet close_signal = argv[2];
+  if (!janet_checktype(close_signal, JANET_NIL)) {
+    int close_signal_int = janet_to_signal(close_signal);
+    if (close_signal_int == -1)
       janet_panic("invalid value for :gc-signal");
 
-    p->gc_signal = gc_signal_int;
+    p->close_signal = close_signal_int;
   }
 
   JanetView redirects = janet_getindexed(argv, 3);
@@ -418,7 +418,7 @@ static Janet process_method_close(int32_t argc, Janet *argv) {
 
   int rc;
 
-  rc = process_signal(p, p->gc_signal);
+  rc = process_signal(p, p->close_signal);
   if (rc < 0)
     janet_panicf("unable to signal process - %s", strerror(errno));
 

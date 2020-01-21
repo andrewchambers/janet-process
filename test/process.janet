@@ -54,7 +54,7 @@
     (error "exit-code should not be nil")))
 
 # garbage collection shutdown.
-(var v (process/spawn ["sleep" "10"] :gc-signal :SIGKILL))
+(var v (process/spawn ["sleep" "10"] :close-signal :SIGKILL))
 (os/sleep 0.1)
 (set v nil)
 (gccollect)

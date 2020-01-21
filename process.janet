@@ -8,7 +8,7 @@
   For example, (process/spawn ["sh"] :cmd "bash") executes
   bash as sh, causing it to run in POSIX shell mode.
 
-  :gc-signal is the singal sent to process during garbage collection.
+  :close-signal is the singal sent to process during garbage collection.
   It can be :SIGTERM, :SIGKILL, etc, ...
   Refer to `man 7 signal` for a list of signals.
   The default signal is SIGTERM to allow processes to gracefully exit,
@@ -39,12 +39,12 @@
 
   ``
   [args &keys {:cmd cmd
-               :gc-signal gc-signal
+               :close-signal close-signal
                :redirects redirects
                :env env
                :start-dir start-dir}]
   (default cmd (get args 0))
-  (default gc-signal :SIGTERM)
+  (default close-signal :SIGTERM)
   (default redirects [])
   (when (nil? cmd)
     (error "args must be present or you must specify :cmd"))
@@ -82,7 +82,7 @@
       [(coerce-file f1) (coerce-file f2)]))
 
   (let [redirects (map coerce-redirect redirects)]
-    (def proc (_process/primitive-spawn cmd args gc-signal redirects env start-dir))
+    (def proc (_process/primitive-spawn cmd args close-signal redirects env start-dir))
     (each f finish (f))
     proc))
 
@@ -135,7 +135,7 @@
   that it accepts redirects into buffers to save command output.
   ``
   [args &keys {:cmd cmd
-               :gc-signal gc-signal
+               :close-signal close-signal
                :redirects redirects
                :env env
                :start-dir start-dir}]
@@ -166,7 +166,7 @@
 
   (let [redirects (map coerce-redirect redirects)]
     (def p (spawn args
-                  :cmd cmd :gc-signal gc-signal
+                  :cmd cmd :close-signal close-signal
                   :redirects redirects :env env :start-dir start-dir))
     (def exit-code (wait p))
     (each f finish (f))
