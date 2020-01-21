@@ -6,11 +6,15 @@
 
   If :cmd is specified, :cmd is executed as (get args 0)
   For example, (process/spawn ["sh"] :cmd "bash") executes
-  bash as sh. When bash is executed as sh, it enters POSIX shell mode.
+  bash as sh, causing it to run in POSIX shell mode.
 
   :gc-signal is the singal sent to process during garbage collection.
   It can be :SIGTERM, :SIGKILL, etc, ...
   Refer to `man 7 signal` for a list of signals.
+  The default signal is SIGTERM to allow processes to gracefully exit,
+  however this means processes may cause delays during garbage collection
+  if they do not exit promptly. Instead it is better to manually manage
+  the life of a process.
 
   :env is a struct or a table of environment variables.
   You can pass (os/environ) to it.
@@ -20,8 +24,6 @@
   :redirects is a list of redirections. Each redirection is [f1 f2].
   Both f1 and f2 can be :null, a janet buffer, or a file object.
   stdin, stdout, and stderr are built-in file objects in janet.
-  If stdin is fed a file object, the launched process doesn't end
-  until the file object is closed.
   dup2(f2, f1) is called for each redirection in order.
   :null and janet buffers are converted to file objects before
   being passed to dup2. Refer to `man dup2` for more information.
@@ -29,6 +31,12 @@
   [[stdout :null] [stderr stdout]] is different from
   [[stderr stdout] [stdout :null]].
   If you want to feed stdin with something, try [stdin something].
+
+  After a process is spawned, the returned object be
+  queried for :pid and :exit-code using the 'get' builtin.
+  The returned object also a :close method so is compatible with
+  'with' forms.
+
   ``
   [args &keys {:cmd cmd
                :gc-signal gc-signal
@@ -123,7 +131,8 @@
 (defn run
   ``
   This runs process in the foreground and returns exit code of the process.
-  It accepts the same arguments that process/spawn does.
+  It accepts the same arguments that process/spawn does, with the addition
+  that it accepts redirects into buffers to save command output.
   ``
   [args &keys {:cmd cmd
                :gc-signal gc-signal
