@@ -22,7 +22,7 @@
   :start-dir is the directory where the command is executed.
 
   :redirects is a list of redirections. Each redirection is [f1 f2].
-  Both f1 and f2 can be :null, a janet buffer, or a file object.
+  Both f1 and f2 can be a file object or :null.
   stdin, stdout, and stderr are built-in file objects in janet.
   dup2(f2, f1) is called for each redirection in order.
   :null and janet buffers are converted to file objects before
@@ -32,11 +32,10 @@
   [[stderr stdout] [stdout :null]].
   If you want to feed stdin with something, try [stdin something].
 
-  After a process is spawned, the returned object be
-  queried for :pid and :exit-code using the 'get' builtin.
-  The returned object also a :close method so is compatible with
+  After a process is spawned, the returned object is
+  queried for :pid and :exit-code, using the 'get' builtin.
+  The returned object also has a :close method and is compatible with
   'with' forms.
-
   ``
   [args &keys {:cmd cmd
                :close-signal close-signal
@@ -53,7 +52,7 @@
 
   (defn coerce-file [f]
     (cond 
-      (or (= :discard f) (= :null f)) # we could depcrecate discard eventually
+      (or (= :discard f) (= :null f)) # we could deprecate discard eventually
         (do 
           (def discardf (file/open "/dev/null" :wb))
           (unless discardf (error "unable to open discard file"))
@@ -133,6 +132,10 @@
   This runs process in the foreground and returns exit code of the process.
   It accepts the same arguments that process/spawn does, with the addition
   that it accepts redirects into buffers to save command output.
+
+  An example of saving stdout in a buffer:
+  (def buf @"")
+  (process/run ["cmd"] :redirects [[stdout buf]])
   ``
   [args &keys {:cmd cmd
                :close-signal close-signal
