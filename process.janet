@@ -26,7 +26,7 @@
 
   (defn coerce-input-file [f]
     (cond 
-      (or (buffer? f) (string f))
+      (or (buffer? f) (string? f))
       (do
         (def tmpf (file/temp))
         (file/write tmpf f)
