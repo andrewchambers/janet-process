@@ -150,8 +150,7 @@ static int process_get(void *ptr, Janet key, Janet *out) {
 }
 
 static const JanetAbstractType process_type = {
-    "sh.process", process_gc, NULL, process_get, NULL,
-    NULL,         NULL,       NULL, NULL,        NULL};
+    "sh.process", process_gc, NULL, process_get, JANET_ATEND_GET};
 
 #define OUT_OF_MEMORY                                                          \
   do {                                                                         \
