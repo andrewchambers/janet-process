@@ -150,8 +150,7 @@ static int process_get(void *ptr, Janet key, Janet *out) {
 }
 
 static const JanetAbstractType process_type = {
-    "sh.process", process_gc, NULL, process_get, NULL,
-    NULL,         NULL,       NULL, NULL,        NULL};
+    "process/process", process_gc, NULL, process_get, JANET_ATEND_GET};
 
 #define OUT_OF_MEMORY                                                          \
   do {                                                                         \
@@ -373,7 +372,13 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
       environ = penviron;
 
     execvp(pcmd, pargv);
-    perror("execve");
+
+    size_t exec_errmsg_sz = 128 + strlen(pcmd);
+    char *exec_errmsg = malloc(exec_errmsg_sz);
+    if(!exec_errmsg)
+      abort();
+    snprintf(exec_errmsg, exec_errmsg_sz, "exec %s failed", pcmd);
+    perror(exec_errmsg);
     exit(1);
   }
 
