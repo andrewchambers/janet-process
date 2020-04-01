@@ -182,6 +182,18 @@ static void *scratch_calloc(size_t nmemb, size_t size) {
   return p;
 }
 
+static const char * checked_arg_string(Janet v) {
+  switch (janet_type(v)) {
+  case JANET_STRING:
+    return (const char *)janet_unwrap_string(v);
+  case JANET_SYMBOL:
+    return (const char *)janet_unwrap_symbol(v);
+  case JANET_KEYWORD:
+    return (const char *)janet_unwrap_keyword(v);
+  }
+  return NULL;
+}
+
 static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
   janet_fixarity(argc, 6);
 
@@ -202,14 +214,21 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
   pargv = NULL;
   penviron = NULL;
 
+  #define GET_STRING_LIKE(E, MSG) \
+
+
   /* Janet strings are zero terminated so this is ok. */
-  pcmd = (const char *)janet_getstring(argv, 0);
+  pcmd = checked_arg_string(argv[0]);
+  if (!pcmd)
+    janet_panicf("%v is not a valid command", argv[0]);
   JanetView args = janet_getindexed(argv, 1);
 
   pargv = scratch_calloc(args.len + 1, sizeof(char *));
 
   for (size_t i = 0; i < (size_t)args.len; i++) {
-    pargv[i] = (char *)janet_getcstring(&args.items[i], 0);
+    pargv[i] = (char *)checked_arg_string(args.items[i]);
+    if (!pcmd)
+      janet_panicf("%v is not a valid argument", args.items[i]);
   }
 
   Janet close_signal = argv[2];

@@ -8,14 +8,14 @@
 (do 
   (def out (buffer/new 0))
   (unless
-    (zero? (process/run ["echo" "hello"] :redirects [[stdout out]]))
+    (zero? (process/run '["echo" hello] :redirects [[stdout out]]))
     (error "process failed"))
   (unless (= "hello\n" (string out))
     (error "output differs")))
 
 (do 
   (def out (buffer/new 0))
-  (unless (zero? (process/run ["echo" "hello"] :redirects [[stderr out] [stdout stderr]]))
+  (unless (zero? (process/run ["echo" :hello] :redirects [[stderr out] [stdout stderr]]))
     (error "process failed"))
   (unless (= "hello\n" (string out))
     (error "output differs")))
