@@ -437,9 +437,6 @@ static Janet jwait(int32_t argc, Janet *argv) {
   janet_fixarity(argc, 1);
   Process *p = (Process *)janet_getabstract(argv, 0, &process_type);
 
-  if (p->exited)
-    janet_panic("wait already called on process");
-
   int exit_code;
 
   if (process_wait(p, &exit_code, 0) != 0)
