@@ -43,7 +43,6 @@
                :env env
                :start-dir start-dir}]
   (default cmd (get args 0))
-  (default close-signal :SIGTERM)
   (default redirects [])
   (when (nil? cmd)
     (error "args must be present or you must specify :cmd"))
@@ -84,6 +83,26 @@
     (def proc (_process/primitive-spawn cmd args close-signal redirects env start-dir))
     (each f finish (f))
     proc))
+
+(defn fork
+  ``
+    Fork the current process, returning nil in the child,
+    or a process object in the parent.
+
+    N.B. Extreme care must be taken when using fork. There is no way to prevent
+    the janet garbage collector from running object destructors
+    in both vm's after the fork. If active destructors are not safe to
+    run twice, it make cause unexpected behavior. An example of this
+    would be corrupting an sqlite3 database, as it is open in two processes
+    after the fork.
+
+    Accepts the following kwargs:
+
+    :close-signal See spawn for details.
+  ``
+  [&keys {:close-signal close-signal}]
+  
+  (_process/primitive-fork close-signal))
 
 (def pipe
   ``

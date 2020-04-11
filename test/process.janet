@@ -1,5 +1,11 @@
 (import process)
 
+# Test fork first, it doesn't play with destructors
+(do
+  (if-let [child (process/fork)]
+    (assert (= 0 (process/wait child))
+    (os/exit 0))))
+
 (do 
   (unless
     (zero? (process/run ["true"] :cmd "true" :redirects [[stdin :null] [stdout :null] [stderr :null]]))
@@ -68,3 +74,4 @@
     (error "process failed"))
   (unless (= "BAR_BAZ\n" (string out))
     (error "output differs")))
+

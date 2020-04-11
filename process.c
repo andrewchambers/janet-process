@@ -182,7 +182,7 @@ static void *scratch_calloc(size_t nmemb, size_t size) {
   return p;
 }
 
-static const char * checked_arg_string(Janet v) {
+static const char *checked_arg_string(Janet v) {
   switch (janet_type(v)) {
   case JANET_STRING:
     return (const char *)janet_unwrap_string(v);
@@ -204,7 +204,7 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
 
   Process *p = (Process *)janet_abstract(&process_type, sizeof(Process));
 
-  p->close_signal = SIGKILL;
+  p->close_signal = SIGTERM;
   p->pid = -1;
   p->exited = 1;
   p->wstatus = 0;
@@ -235,7 +235,7 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
   if (!janet_checktype(close_signal, JANET_NIL)) {
     int close_signal_int = janet_to_signal(close_signal);
     if (close_signal_int == -1)
-      janet_panic("invalid value for :gc-signal");
+      janet_panic("invalid value for :close-signal");
 
     p->close_signal = close_signal_int;
   }
@@ -404,6 +404,35 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
   return janet_wrap_abstract(p);
 }
 
+static Janet jprimitive_fork(int32_t argc, Janet *argv) {
+  janet_fixarity(argc, 1);
+
+  pid_t child = fork();
+  if (child == -1)
+    janet_panicf("error fork failed - %s", strerror(errno));
+
+  if (child == 0)
+    return janet_wrap_nil();
+
+
+  Process *p = (Process *)janet_abstract(&process_type, sizeof(Process));
+  p->close_signal = SIGTERM;
+  p->pid = child;
+  p->exited = 0;
+  p->wstatus = 0;
+
+
+  Janet close_signal = argv[0];
+  if (!janet_checktype(close_signal, JANET_NIL)) {
+    int close_signal_int = janet_to_signal(close_signal);
+    if (close_signal_int == -1)
+      janet_panic("invalid value for :close-signal");
+    p->close_signal = close_signal_int;
+  }
+
+  return janet_wrap_abstract(p);
+}
+
 static Janet jwait(int32_t argc, Janet *argv) {
   janet_fixarity(argc, 1);
   Process *p = (Process *)janet_getabstract(argv, 0, &process_type);
@@ -474,6 +503,7 @@ static Janet jpipe(int32_t argc, Janet *argv) {
 
 static const JanetReg cfuns[] = {
     {"primitive-spawn", jprimitive_spawn, "(process/primitive-spawn spec)\n\n"},
+    {"primitive-fork", jprimitive_fork, "(process/primitive-fork spec)\n\n"},
     {"signal", jsignal, "(process/signal p sig)\n\n"},
     {"wait", jwait, "(process/wait p)\n\n"},
     {"pipe", jpipe, "(process/pipe)\n\n"},
