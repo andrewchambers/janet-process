@@ -35,13 +35,17 @@ int xclose(int fd) {
 }
 
 int ensure_child_fds_from_are_closed_at_exec(int lowfd) {
+#if defined(__FreeBSD__)
+  closefrom(lowfd);
+  return 0;
+#else
   const char *path;
   DIR *dirp;
   struct dirent *dent;
   int ret = 0;
 
-  /* Use /proc/self/fd (or /dev/fd on FreeBSD) if it exists. */
-#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__APPLE__)
+  /* Use /proc/self/fd (or /dev/fd on macOS) if it exists. */
+#if defined(__APPLE__)
   path = "/dev/fd";
 #else
   path = "/proc/self/fd";
@@ -73,4 +77,5 @@ int ensure_child_fds_from_are_closed_at_exec(int lowfd) {
   (void)closedir(dirp);
 
   return ret;
+#endif
 }
