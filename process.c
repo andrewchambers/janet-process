@@ -11,7 +11,9 @@
 
 void reset_all_signal_handlers(void);
 int xclose(int fd);
-int ensure_child_fds_from_are_closed_at_exec(int lowfd);
+/* Like close_from, but for portabiltiy reasons
+   only guaranteed to work before exec calls. */
+int preexec_close_from(int lowfd);
 
 extern char **environ;
 
@@ -376,11 +378,6 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
         }
     }
 
-    if (ensure_child_fds_from_are_closed_at_exec(4) < 0) {
-      fprintf(stderr, "unable to ensure fds will close, aborting\n");
-      exit(1);
-    }
-
     if (pstartdir)
       if (chdir(pstartdir) < 0) {
         perror("chdir");
@@ -389,6 +386,11 @@ static Janet jprimitive_spawn(int32_t argc, Janet *argv) {
 
     if (penviron)
       environ = penviron;
+
+    if (preexec_close_from(3) < 0) {
+      fprintf(stderr, "unable to ensure fds will close, aborting\n");
+      exit(1);
+    }
 
     execvp(pcmd, pargv);
 

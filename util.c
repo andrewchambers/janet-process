@@ -34,7 +34,7 @@ int xclose(int fd) {
   return err;
 }
 
-int ensure_child_fds_from_are_closed_at_exec(int lowfd) {
+int preexec_close_from(int lowfd) {
 #if defined(__FreeBSD__)
   closefrom(lowfd);
   return 0;
@@ -62,6 +62,8 @@ int ensure_child_fds_from_are_closed_at_exec(int lowfd) {
     if (fd < lowfd)
       continue;
 
+    // Instead of closing we do this, this means
+    // our dirp isn't closed prematurely.
     if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
       /* Not sure there is anything we can do... */
       ;
