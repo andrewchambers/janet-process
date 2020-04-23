@@ -79,10 +79,9 @@
       [f1 (coerce-input-file f2)]
       [(coerce-file f1) (coerce-file f2)]))
 
-  (let [redirects (map coerce-redirect redirects)]
-    (def proc (_process/primitive-spawn cmd args close-signal redirects env start-dir))
-    (each f finish (f))
-    proc))
+  (defer (each f finish (f))
+    (let [redirects (map coerce-redirect redirects)]
+      (_process/primitive-spawn cmd args close-signal redirects env start-dir))))
 
 (defn fork
   ``
@@ -195,6 +194,4 @@
       (def p (spawn args
                     :cmd cmd :close-signal close-signal
                     :redirects redirects :env env :start-dir start-dir))
-      (def exit-code (wait p))
-      
-      exit-code)))
+      (wait p))))
