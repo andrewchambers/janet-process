@@ -505,12 +505,58 @@ static Janet jpipe(int32_t argc, Janet *argv) {
   return janet_wrap_tuple(janet_tuple_end(t));
 }
 
+
+static Janet jdup(int32_t argc, Janet *argv) {
+  (void)argv;
+  janet_fixarity(argc, 1);
+
+  int jflags;
+
+  FILE *f = janet_getfile(argv, 0, &jflags);
+
+  char *fmode = NULL;
+
+  switch (jflags & (JANET_FILE_READ|JANET_FILE_WRITE|JANET_FILE_BINARY)) {
+    case JANET_FILE_READ|JANET_FILE_WRITE|JANET_FILE_BINARY:
+      fmode = "w+b";
+      break;
+    case JANET_FILE_READ|JANET_FILE_BINARY:
+      fmode = "rb";
+      break;
+    case JANET_FILE_WRITE|JANET_FILE_BINARY:
+      fmode = "wb";
+      break;
+    case JANET_FILE_READ:
+      fmode = "r";
+      break;
+    case JANET_FILE_WRITE:
+      fmode = "w";
+      break;
+    default:
+      janet_panicf("unable to dup file, bad flags");
+  }
+
+  int newfd = dup(fileno(f));
+  if (newfd < 0) {
+    janet_panicf("unable to dup file object - %s", strerror(errno));
+  }
+
+  FILE *newf = fdopen(newfd, fmode);
+  if (!newf) {
+    close(newfd);
+    janet_panicf("unable to open new file object - %s", strerror(errno));
+  }
+
+  return janet_makefile(newf, jflags);
+}
+
 static const JanetReg cfuns[] = {
     {"primitive-spawn", jprimitive_spawn, "(process/primitive-spawn spec)\n\n"},
     {"primitive-fork", jprimitive_fork, "(process/primitive-fork spec)\n\n"},
     {"signal", jsignal, "(process/signal p sig)\n\n"},
     {"wait", jwait, "(process/wait p)\n\n"},
     {"pipe", jpipe, "(process/pipe)\n\n"},
+    {"dup", jdup, "(process/dup)\n\n"},
     {NULL, NULL, NULL}};
 
 JANET_MODULE_ENTRY(JanetTable *env) { janet_cfuns(env, "_process", cfuns); }

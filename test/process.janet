@@ -47,6 +47,17 @@
   (unless (= "hello world" (string out))
     (error "output differs")))
 
+
+(do 
+  (def out (buffer/new 0))
+  (unless (zero? (process/run ["janet" "-e" "(print `hello`)
+                                             (file/flush stdout)
+                                             (eprint `world`)"]
+                              :redirects [[stdout out] [stderr out]]))
+    (error "process failed"))
+  (unless (= "hello\nworld\n" (string out))
+    (error "output differs")))
+
 # methods
 (do 
   (def p

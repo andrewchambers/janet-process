@@ -163,18 +163,22 @@
                :start-dir start-dir}]
   (default redirects [])
   (def finish @[])
+  (def buf-mapping @{})
 
   (defn coerce-file [f]
     (cond 
       (buffer? f)
-      (do
-        (def tmpf (file/temp))
-        (array/push finish
-          (fn []
-            (file/seek tmpf :set 0)
-            (file/read tmpf :all f)
-            (file/close tmpf)))
-        tmpf)
+        (if-let [tmpf (get buf-mapping f)]
+          (_process/dup tmpf)
+          (do
+            (def tmpf (file/temp))
+            (put buf-mapping f tmpf)
+            (array/push finish
+              (fn []
+                (file/seek tmpf :set 0)
+                (file/read tmpf :all f)
+                (file/close tmpf)))
+            tmpf))
       f))
 
   (defn coerce-redirect [[f1 f2]]
@@ -186,10 +190,11 @@
               # if we redirect stdin to a buffer, we want to write the buffer.
       [(coerce-file f1) (coerce-file f2)]))
 
-  (let [redirects (map coerce-redirect redirects)]
-    (def p (spawn args
-                  :cmd cmd :close-signal close-signal
-                  :redirects redirects :env env :start-dir start-dir))
-    (def exit-code (wait p))
-    (each f finish (f))
-    exit-code))
+  (defer (each f finish (f))
+    (let [redirects (map coerce-redirect redirects)]
+      (def p (spawn args
+                    :cmd cmd :close-signal close-signal
+                    :redirects redirects :env env :start-dir start-dir))
+      (def exit-code (wait p))
+      
+      exit-code)))
