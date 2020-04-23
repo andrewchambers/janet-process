@@ -27,57 +27,57 @@ void reset_all_signal_handlers(void) {
 }
 
 int xclose(int fd) {
-  int err;
-  do {
-    err = close(fd);
-  } while (err < 0 && errno == EINTR);
-  return err;
+    int err;
+    do {
+        err = close(fd);
+    } while (err < 0 && errno == EINTR);
+    return err;
 }
 
 int preexec_close_from(int lowfd) {
 #if defined(__FreeBSD__)
-  closefrom(lowfd);
-  return 0;
+    closefrom(lowfd);
+    return 0;
 #else
-  const char *path;
-  DIR *dirp;
-  struct dirent *dent;
-  int ret = 0;
+    const char *path;
+    DIR *dirp;
+    struct dirent *dent;
+    int ret = 0;
 
-  /* Use /proc/self/fd (or /dev/fd on macOS) if it exists. */
+    /* Use /proc/self/fd (or /dev/fd on macOS) if it exists. */
 #if defined(__APPLE__)
-  path = "/dev/fd";
+    path = "/dev/fd";
 #else
-  path = "/proc/self/fd";
+    path = "/proc/self/fd";
 #endif
-  dirp = opendir(path);
-  if (dirp == NULL)
-    return -1;
-
-  errno = 0;
-  while ((dent = readdir(dirp)) != NULL) {
-    int fd;
-
-    fd = atoi(dent->d_name);
-    if (fd < lowfd)
-      continue;
-
-    // Instead of closing we do this, this means
-    // our dirp isn't closed prematurely.
-    if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
-      /* Not sure there is anything we can do... */
-      ;
-    }
+    dirp = opendir(path);
+    if (dirp == NULL)
+        return -1;
 
     errno = 0;
-  }
+    while ((dent = readdir(dirp)) != NULL) {
+        int fd;
 
-  /* readdir failed */
-  if (errno)
-    ret = -1;
+        fd = atoi(dent->d_name);
+        if (fd < lowfd)
+            continue;
 
-  (void)closedir(dirp);
+        // Instead of closing we do this, this means
+        // our dirp isn't closed prematurely.
+        if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
+            /* Not sure there is anything we can do... */
+            ;
+        }
 
-  return ret;
+        errno = 0;
+    }
+
+    /* readdir failed */
+    if (errno)
+        ret = -1;
+
+    (void)closedir(dirp);
+
+    return ret;
 #endif
 }
