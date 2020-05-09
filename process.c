@@ -492,10 +492,16 @@ static Janet jpipe(int32_t argc, Janet *argv) {
     FILE *p1 = fdopen(mypipe[0], "rb");
     FILE *p2 = fdopen(mypipe[1], "wb");
     if (!p1 || !p2) {
-        if(!p1)
+        if(p1)
+            fclose(p1);
+        else
             close(mypipe[0]);
-        if(!p2)
+
+        if(p2)
+            fclose(p2);
+        else
             close(mypipe[1]);
+
         janet_panicf("unable to create file objects - %s", strerror(errno));
     }
 
